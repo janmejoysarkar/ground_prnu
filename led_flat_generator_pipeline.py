@@ -15,6 +15,9 @@ tight time constraints during FBT.
 as a function
 
 -2023-11-17: 255 nm LED data to be analysed. Function added.
+
+-2023-11-23: Function added to analyse the performace of FF correction on single 
+255 nm and 355 nm images.
 """
 
 from astropy.convolution import convolve
@@ -46,13 +49,13 @@ def blur(data, kernel): #blurring function
     return(convolve(data, Box2DKernel(kernel), normalize_kernel=True))
 
 def prnu_measure(data): #used to find % pixel response non uniformity (PRNU) in each quad and full image
-        e,f,g,h= data[7:2068, 309:2352], data[7:2068, 2352:4390], data[2068:4127, 309:2352], data[2068:4127, 2352:4390]
-        stdev= np.array([np.std(e), np.std(f), np.std(g), np.std(h)])
-        mean= np.array([np.mean(e), np.mean(f), np.mean(g), np.mean(f)])
-        prnu_quadrants= stdev*100/mean #e,f,g,h        
-        prnu_full_frame= np.std((data[7:4127,309:4390])*100/np.mean(data[7:4127,309:4390]))
-        print('PRNU_full_frame %= ', prnu_full_frame)
-        print('PRNU % [e,f,g,h]= ',prnu_quadrants)
+    e,f,g,h= data[7:2068, 309:2352], data[7:2068, 2352:4390], data[2068:4127, 309:2352], data[2068:4127, 2352:4390]
+    stdev= np.array([np.std(e), np.std(f), np.std(g), np.std(h)])
+    mean= np.array([np.mean(e), np.mean(f), np.mean(g), np.mean(f)])
+    prnu_quadrants= stdev*100/mean #e,f,g,h        
+    prnu_full_frame= np.std((data[7:4127,309:4390])*100/np.mean(data[7:4127,309:4390]))
+    print('PRNU_full_frame %= ', prnu_full_frame)
+    print('PRNU % [e,f,g,h]= ',prnu_quadrants)
 
 def nm355(): #running for 355nm LED
     folder= '/home/janmejoy/Dropbox/Janmejoy_SUIT_Dropbox/flat_field/LED_data/2023-05-31_4_led_355nm_p75_current_10_times_100ms_fw1_04_fw2_07_005'
@@ -96,26 +99,38 @@ def nm255(): #running for 255nm LED
     prnu_measure(led_flat_field) #for printing PRNU values.
     return(led_flat_field)
 
-def residual(crop_raw, crop):
-    sig_raw= np.std(crop_raw)
-    mean_raw= np.mean(crop_raw)
-    sig_corr= np.std(crop)
-    mean_corr=np.mean(crop)
-    res_error= np.sqrt((sig_raw**2-sig_corr**2))/mean_corr
-    print(sig_raw, mean_raw, sig_corr, mean_corr, res_error)
+
+def calib_stats(single, corrected, prnu, croprow, cropcol, size):
+    crop_raw= single[croprow:croprow+size, cropcol:cropcol+size]
+    crop_cor= corrected[croprow:croprow+size, cropcol:cropcol+size]
+    crop_prnu= prnu[croprow:croprow+size, cropcol:cropcol+size]
+    plt.imshow(crop_cor)
     
+    sd_raw= np.std(crop_raw)/np.mean(crop_raw)
+    sd_cor= np.std(crop_cor)/np.mean(crop_cor)
+    sd_prnu= np.std(crop_prnu)/np.mean(crop_prnu)
+    calc_cor= np.sqrt(sd_raw**2-sd_prnu**2)
+    
+    print("[1] Sdev Raw:", sd_raw)
+    print("[2] Sdev Corrected:", sd_cor)
+    print("[3] Sdev PRNU: ", sd_prnu)
+    print("[4] sqrt(Raw^2-PRNU^2): ", calc_cor)
+    print("Upon good FF correction, [2] and [4] should match well")
+
+
+### Flatfield correction on LED images ###
+
+### 355 nm ###
 prnu_355= nm355()
-prnu_255= nm255()
-
-single_255=fits.open('/home/janmejoy/Dropbox/Janmejoy_SUIT_Dropbox/flat_field/LED_data/2023-06-01_255_4_led_10_times_fw1_07_fw2_06_6s_004/LED_255_4_led_10_times_fw1_07_fw2_06_6s_004_000002.fits')[0].data
-single_255=single_255.astype(int)
-corrected_255= single_255/prnu_255
-residual(single_255[2500:2600, 2500:2600], corrected_255[2500:2600, 2500:2600])
-residual(single_255[1500:1600, 1500:1600], corrected_255[1500:1600, 1500:1600])
-
-
-single_355=fits.open('/home/janmejoy/Dropbox/Janmejoy_SUIT_Dropbox/flat_field/LED_data/2023-05-31_4_led_355nm_p75_current_10_times_100ms_fw1_04_fw2_07_005/LED_4_led_355nm_p75_current_10_times_100ms_fw1_04_fw2_07_005_000002.fits')[0].data
+single_355=fits.open('/home/janmejoy/Dropbox/Janmejoy_SUIT_Dropbox/flat_field/LED_data/2023-05-31_4_led_355nm_p75_current_10_times_100ms_fw1_04_fw2_07_005/LED_4_led_355nm_p75_current_10_times_100ms_fw1_04_fw2_07_005_000001.fits')[0].data
 single_355=single_355.astype(int)
 corrected_355= single_355/prnu_355
-residual(single_355[2500:2600, 2500:2600], corrected_355[2500:2600, 2500:2600])
-residual(single_355[1100:1200, 1100:1200], corrected_355[1100:1200, 1100:1200])
+calib_stats(single_355, corrected_355, prnu_355, 3500, 3600, 25)
+
+
+### 255 nm ###
+prnu_255= nm255()
+single_255=fits.open('/home/janmejoy/Dropbox/Janmejoy_SUIT_Dropbox/flat_field/LED_data/2023-06-01_255_4_led_10_times_fw1_07_fw2_06_6s_004/LED_255_4_led_10_times_fw1_07_fw2_06_6s_004_000001.fits')[0].data
+single_255=single_255.astype(int)
+corrected_255= single_255/prnu_255
+calib_stats(single_255, corrected_255, prnu_255, 2500, 3500, 20)
