@@ -18,6 +18,9 @@ as a function
 
 -2023-11-23: Function added to analyse the performace of FF correction on single 
 255 nm and 355 nm images.
+
+-2023-11-24: Single flat generator function is made for 355 and 255 nm LED images.
+Previously two separate functions were present. calib_stat crop areas updated.
 """
 
 from astropy.convolution import convolve
@@ -48,6 +51,26 @@ def add(folder): #adds similar LED images in path 'folder' after bias correction
 def blur(data, kernel): #blurring function
     return(convolve(data, Box2DKernel(kernel), normalize_kernel=True))
 
+def flat_generator(folder, kernel, name): #running for 355nm LED
+    stacked_led_img= add(folder)
+    led_flat_field= stacked_led_img/blur(stacked_led_img, kernel) #generates LED flat.
+    #Based on previous study, kernel size of 11x11 px is used for boxcar blurring in 'blur' function.
+    
+    #Data visualization only.
+    plt.figure(name)
+    plt.subplot(1,2,1)
+    plt.imshow(stacked_led_img)
+    plt.colorbar()
+    plt.title("Bias corrected Master LED Image")
+    plt.subplot(1,2,2)
+    plt.imshow(led_flat_field, vmin=0.97, vmax=1.03)
+    plt.title(name)
+    plt.colorbar()
+    plt.show()
+    
+    prnu_measure(led_flat_field) #for printing PRNU values.
+    return(led_flat_field)
+
 def prnu_measure(data): #used to find % pixel response non uniformity (PRNU) in each quad and full image
     e,f,g,h= data[7:2068, 309:2352], data[7:2068, 2352:4390], data[2068:4127, 309:2352], data[2068:4127, 2352:4390]
     stdev= np.array([np.std(e), np.std(f), np.std(g), np.std(h)])
@@ -57,59 +80,18 @@ def prnu_measure(data): #used to find % pixel response non uniformity (PRNU) in 
     print('PRNU_full_frame %= ', prnu_full_frame)
     print('PRNU % [e,f,g,h]= ',prnu_quadrants)
 
-def nm355(): #running for 355nm LED
-    folder= '/home/janmejoy/Dropbox/Janmejoy_SUIT_Dropbox/flat_field/LED_data/2023-05-31_4_led_355nm_p75_current_10_times_100ms_fw1_04_fw2_07_005'
-    stacked_led_img= add(folder)
-    led_flat_field= stacked_led_img/blur(stacked_led_img, 11) #generates LED flat.
-    #Based on previous study, kernel size of 11x11 px is used for boxcar blurring in 'blur' function.
-    
-    #Data visualization only.
-    plt.figure("PRNU_355 nm")
-    plt.subplot(1,2,1)
-    plt.imshow(stacked_led_img)
-    plt.colorbar()
-    plt.title("Bias corrected Master LED Image")
-    plt.subplot(1,2,2)
-    plt.imshow(led_flat_field, vmin=0.97, vmax=1.03)
-    plt.title("PRNU_355 nm")
-    plt.colorbar()
-    plt.show()
-    
-    prnu_measure(led_flat_field) #for printing PRNU values.
-    return(led_flat_field)
-    
-def nm255(): #running for 255nm LED
-    folder= '/home/janmejoy/Dropbox/Janmejoy_SUIT_Dropbox/flat_field/LED_data/2023-06-01_255_4_led_10_times_fw1_07_fw2_06_6s_004'
-    stacked_led_img= add(folder)
-    led_flat_field= stacked_led_img/blur(stacked_led_img, 11) #generates LED flat.
-    #Based on previous study, kernel size of 11x11 px is used for boxcar blurring in 'blur' function.
-    
-    #Data visualization only.
-    plt.figure("PRNU_255 nm")
-    plt.subplot(1,2,1)
-    plt.imshow(stacked_led_img)
-    plt.colorbar()
-    plt.title("Bias corrected Master LED Image")
-    plt.subplot(1,2,2)
-    plt.imshow(led_flat_field, vmin=0.97, vmax=1.03)
-    plt.title("PRNU_255 nm")
-    plt.colorbar()
-    plt.show()
-    
-    prnu_measure(led_flat_field) #for printing PRNU values.
-    return(led_flat_field)
-
-
+#finds degree of correction implemented by PRNU correction.
 def calib_stats(single, corrected, prnu, croprow, cropcol, size):
     crop_raw= single[croprow:croprow+size, cropcol:cropcol+size]
     crop_cor= corrected[croprow:croprow+size, cropcol:cropcol+size]
     crop_prnu= prnu[croprow:croprow+size, cropcol:cropcol+size]
-    plt.imshow(crop_cor)
+    #plt.figure()
+    #plt.imshow(crop_cor)
     
     sd_raw= np.std(crop_raw)/np.mean(crop_raw)
     sd_cor= np.std(crop_cor)/np.mean(crop_cor)
     sd_prnu= np.std(crop_prnu)/np.mean(crop_prnu)
-    calc_cor= np.sqrt(sd_raw**2-sd_prnu**2)
+    calc_cor= np.sqrt(np.abs(sd_raw**2-sd_prnu**2))
     
     print("[1] Sdev Raw:", sd_raw)
     print("[2] Sdev Corrected:", sd_cor)
@@ -121,16 +103,20 @@ def calib_stats(single, corrected, prnu, croprow, cropcol, size):
 ### Flatfield correction on LED images ###
 
 ### 355 nm ###
-prnu_355= nm355()
-single_355=fits.open('/home/janmejoy/Dropbox/Janmejoy_SUIT_Dropbox/flat_field/LED_data/2023-05-31_4_led_355nm_p75_current_10_times_100ms_fw1_04_fw2_07_005/LED_4_led_355nm_p75_current_10_times_100ms_fw1_04_fw2_07_005_000001.fits')[0].data
+folder= '/home/janmejoy/Dropbox/Janmejoy_SUIT_Dropbox/flat_field/LED_data/2023-05-31_4_led_355nm_p75_current_10_times_100ms_fw1_04_fw2_07_005'
+prnu_355= flat_generator(folder, 11, "PRNU 355 nm")
+single_355=fits.open(folder+'/LED_4_led_355nm_p75_current_10_times_100ms_fw1_04_fw2_07_005_000001.fits')[0].data
 single_355=single_355.astype(int)
 corrected_355= single_355/prnu_355
-calib_stats(single_355, corrected_355, prnu_355, 3500, 3600, 25)
+print('\n**** 355 nm flat stats ****')
+calib_stats(single_355, corrected_355, prnu_355, 2500, 2500, 25)
 
 
 ### 255 nm ###
-prnu_255= nm255()
-single_255=fits.open('/home/janmejoy/Dropbox/Janmejoy_SUIT_Dropbox/flat_field/LED_data/2023-06-01_255_4_led_10_times_fw1_07_fw2_06_6s_004/LED_255_4_led_10_times_fw1_07_fw2_06_6s_004_000001.fits')[0].data
+folder= '/home/janmejoy/Dropbox/Janmejoy_SUIT_Dropbox/flat_field/LED_data/2023-06-01_255_4_led_10_times_fw1_07_fw2_06_6s_004'
+prnu_255= flat_generator(folder, 13, "PRNU 255 nm")
+single_255=fits.open(folder+'/LED_255_4_led_10_times_fw1_07_fw2_06_6s_004_000001.fits')[0].data
 single_255=single_255.astype(int)
 corrected_255= single_255/prnu_255
-calib_stats(single_255, corrected_255, prnu_255, 2500, 3500, 20)
+print('\n**** 255 nm flat stats ****')
+calib_stats(single_255, corrected_255, prnu_255, 1000, 2500, 25)
