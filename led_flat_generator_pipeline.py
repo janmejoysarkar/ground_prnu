@@ -10,6 +10,7 @@ Created on Mon Sep 18 20:37:29 2023
 -Under ideal condition, Master Dark subtraction should be done.
 -Darks were not recorded for LED imaging sequence, as per instruction, due to 
 tight time constraints during FBT.
+-Made for use with ground FBT data.
 
 -2023-10-27: PRNU % calculation for each quadrant and full flat field image is introduced
 as a function
@@ -63,7 +64,7 @@ def flat_generator(folder, kernel, name): #running for 355nm LED
     plt.colorbar()
     plt.title("Bias corrected Master LED Image")
     plt.subplot(1,2,2)
-    plt.imshow(led_flat_field, vmin=0.97, vmax=1.03)
+    plt.imshow(led_flat_field, vmin=0.95, vmax=1.05)
     plt.title(name)
     plt.colorbar()
     plt.show()
@@ -111,7 +112,7 @@ corrected_355= single_355/prnu_355
 print('\n**** 355 nm flat stats ****')
 calib_stats(single_355, corrected_355, prnu_355, 2500, 2500, 25)
 
-
+'''
 ### 255 nm ###
 folder= '/home/janmejoy/Dropbox/Janmejoy_SUIT_Dropbox/flat_field/LED_data/2023-06-01_255_4_led_10_times_fw1_07_fw2_06_6s_004'
 prnu_255= flat_generator(folder, 13, "PRNU 255 nm")
@@ -120,3 +121,4 @@ single_255=single_255.astype(int)
 corrected_255= single_255/prnu_255
 print('\n**** 255 nm flat stats ****')
 calib_stats(single_255, corrected_255, prnu_255, 1000, 2500, 25)
+'''
