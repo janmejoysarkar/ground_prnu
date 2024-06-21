@@ -99,12 +99,14 @@ def calib_stats(single, corrected, prnu, croprow, cropcol, size):
     print("[3] Sdev PRNU: ", sd_prnu)
     print("[4] sqrt(Raw^2-PRNU^2): ", calc_cor)
     print("Upon good FF correction, [2] and [4] should match well")
+    print("Poission Noise (ADU)", np.sqrt(np.mean(crop_cor))/np.mean(crop_cor))
 
 
 ### Flatfield correction on LED images ###
+project_path= os.path.expanduser('~/Dropbox/Janmejoy_SUIT_Dropbox/flat_field/LED/ground_PRNU_project/')
 
 ### 355 nm ###
-folder= '/home/janmejoy/Dropbox/Janmejoy_SUIT_Dropbox/flat_field/LED_data/2023-05-31_4_led_355nm_p75_current_10_times_100ms_fw1_04_fw2_07_005'
+folder= os.path.join(project_path, 'data/raw/2023-05-31_4_led_355nm_p75_current_10_times_100ms_fw1_04_fw2_07_005')
 prnu_355= flat_generator(folder, 11, "PRNU 355 nm")
 single_355=fits.open(folder+'/LED_4_led_355nm_p75_current_10_times_100ms_fw1_04_fw2_07_005_000001.fits')[0].data
 single_355=single_355.astype(int)
@@ -112,13 +114,13 @@ corrected_355= single_355/prnu_355
 print('\n**** 355 nm flat stats ****')
 calib_stats(single_355, corrected_355, prnu_355, 2500, 2500, 25)
 
-'''
+
 ### 255 nm ###
-folder= '/home/janmejoy/Dropbox/Janmejoy_SUIT_Dropbox/flat_field/LED_data/2023-06-01_255_4_led_10_times_fw1_07_fw2_06_6s_004'
+folder= os.path.join(project_path, 'data/raw/2023-06-01_255_4_led_10_times_fw1_07_fw2_06_6s_004')
 prnu_255= flat_generator(folder, 13, "PRNU 255 nm")
 single_255=fits.open(folder+'/LED_255_4_led_10_times_fw1_07_fw2_06_6s_004_000001.fits')[0].data
 single_255=single_255.astype(int)
 corrected_255= single_255/prnu_255
 print('\n**** 255 nm flat stats ****')
 calib_stats(single_255, corrected_255, prnu_255, 1000, 2500, 25)
-'''
+
