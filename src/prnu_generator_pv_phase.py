@@ -15,6 +15,9 @@ Created on Mon Nov 27 13:48:51 2023
     and kernel size.
     Added minor comments. Made dustmap with 25 px kernel.
 -Added feature for saving PRNU images as per the raw image date.
+- 2024-07-24: Added Level 1 conversion of ground images makes the images hori-
+zontally flipped, compared to onboard LED images. A fliplr has been added.
+
 
 @author: janmejoy
 """
@@ -47,6 +50,7 @@ def prep_header(fname, mfg, data_date):
 def flat_generator(filelist, kernel, name, save=None):
     stacked_led_img= add(filelist)
     led_flat_field= stacked_led_img/blur(stacked_led_img, kernel) #generates LED flat.
+    led_flat_field= np.fliplr(led_flat_field)
     hdu=fits.PrimaryHDU(led_flat_field, header=prep_header(name, mfg, date))
     if save==True: hdu.writeto(f'{sav}{name}.fits', overwrite=True)
     #Based on previous study, kernel size of 11x11 px is used for boxcar blurring in 'blur' function.
@@ -94,7 +98,7 @@ def calib_stats(single_filename, prnu_file, croprow, cropcol, size, name):
 
 if __name__=='__main__':
     project_path= os.path.expanduser('~/Dropbox/Janmejoy_SUIT_Dropbox/flat_field/LED/ground_PRNU_project/')
-    filelist= glob.glob(project_path+"data/raw/*")
+    filelist= glob.glob(project_path+"data/processed/*")
     save= True
     sav= os.path.join(project_path, 'products/')
     mfg= str(datetime.date.today()) #manufacturing date
@@ -129,7 +133,7 @@ if __name__=='__main__':
     
     prnu_355_common= lighten([prnu_355_ff, prnu_355_aa])
     sav_hdu= fits.PrimaryHDU(prnu_355_common, header= prep_header('prnu_355_common.fits', mfg, date))
-    if save: sav_hdu.writeto(f'{sav}{date}_prnu_355_common.fits')
+    if save: sav_hdu.writeto(f'{sav}{date}_prnu_355_common.fits', overwrite=True)
     calib_stats(aa_355[0], prnu_355_common, 2200, 1500, 25, f'{date}_prnu_355_aa') #2200, 1500, 25,
     calib_stats(ff_355[0], prnu_355_common, 2200, 1500, 25, f'{date}_prnu_355_ff')
 
@@ -142,7 +146,7 @@ if __name__=='__main__':
     
     prnu_255_common= lighten([prnu_255_ff, prnu_255_aa])
     sav_hdu= fits.PrimaryHDU(prnu_255_common, header= prep_header('prnu_255_common.fits', mfg, date))
-    if save: sav_hdu.writeto(f'{sav}{date}_prnu_255_common.fits')
+    if save: sav_hdu.writeto(f'{sav}{date}_prnu_255_common.fits', overwrite=True)
     calib_stats(ff_255[0], prnu_255_common, 2000, 3800, 25, f'{date}_prnu_255_ff')
     calib_stats(aa_255[0], prnu_255_common, 2000, 3800, 25, f'{date}_prnu_255_aa')
 
