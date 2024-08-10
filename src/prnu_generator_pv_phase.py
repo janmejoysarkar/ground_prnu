@@ -95,6 +95,25 @@ def calib_stats(single_filename, prnu_file, croprow, cropcol, size, name):
     print("Avg counts=", np.mean(crop_raw))
     print("Upon good FF correction, [2] and [4] should match well \n")
     print("Mean", np.mean(crop_cor))
+    
+def remove_center_line(data, s):
+    '''
+    Parameters
+    ----------
+    data : 2D numpy array
+        Processed PRNU data.
+    s : integer
+        size of center filter.
+
+    Returns
+    -------
+    None.
+
+    '''
+    for i in range(4096):
+        data[i, 2048-s: 2048+s]= np.mean(data[i, 2048-s: 2048+s])
+        data[2048-s: 2048+s, i]= np.mean(data[2048-s: 2048+s, i])
+    return(data)
 
 if __name__=='__main__':
     project_path= os.path.expanduser('~/Dropbox/Janmejoy_SUIT_Dropbox/flat_field/LED/ground_PRNU_project/')
@@ -132,6 +151,7 @@ if __name__=='__main__':
     prnu_355_aa = flat_generator(aa_355, kernel_355, f'{date}_prnu_355_aa', save)
     
     prnu_355_common= lighten([prnu_355_ff, prnu_355_aa])
+    prnu_355_common= remove_center_line(prnu_355_common, 5)
     sav_hdu= fits.PrimaryHDU(prnu_355_common, header= prep_header('prnu_355_common.fits', mfg, date))
     if save: sav_hdu.writeto(f'{sav}{date}_prnu_355_common.fits', overwrite=True)
     calib_stats(aa_355[0], prnu_355_common, 2200, 1500, 25, f'{date}_prnu_355_aa') #2200, 1500, 25,
@@ -145,6 +165,7 @@ if __name__=='__main__':
     prnu_255_aa = flat_generator(aa_255, kernel_255, f'{date}_prnu_255_aa', save)
     
     prnu_255_common= lighten([prnu_255_ff, prnu_255_aa])
+    prnu_255_common= remove_center_line(prnu_255_common, 5)
     sav_hdu= fits.PrimaryHDU(prnu_255_common, header= prep_header('prnu_255_common.fits', mfg, date))
     if save: sav_hdu.writeto(f'{sav}{date}_prnu_255_common.fits', overwrite=True)
     calib_stats(ff_255[0], prnu_255_common, 2000, 3800, 25, f'{date}_prnu_255_ff')
