@@ -17,7 +17,9 @@ Created on Mon Nov 27 13:48:51 2023
 -Added feature for saving PRNU images as per the raw image date.
 - 2024-07-24: Added Level 1 conversion of ground images makes the images hori-
 zontally flipped, compared to onboard LED images. A fliplr has been added.
-
+- 2024-08-09: Module added to remove quadrant jump lines. Medians across 15 px
+taken for each row in the quadrant change regions.
+- 2024-08-10: Module added to remove dust spots on PRNU image.
 
 @author: janmejoy
 """
@@ -29,6 +31,8 @@ from astropy.io import fits
 from astropy.convolution import convolve
 from astropy.convolution import Box2DKernel
 import datetime
+from skimage.morphology import dilation, disk, erosion
+
 
 def add(filelist):
     data_sum=0
@@ -107,13 +111,21 @@ def remove_center_line(data, s):
 
     Returns
     -------
-    None.
-
+    Filtered image np array
     '''
     for i in range(4096):
         data[i, 2048-s: 2048+s]= np.mean(data[i, 2048-s: 2048+s])
         data[2048-s: 2048+s, i]= np.mean(data[2048-s: 2048+s, i])
     return(data)
+
+def remove_dust(data, plot=None, sav=None):
+    particle_mask= dilation(data<0.97, disk(3))
+    filtered=dilation(erosion(data, disk(1)), disk(6))*particle_mask
+    filtered_image= (data*np.logical_not(particle_mask))+filtered
+    spike_mask= erosion(filtered_image<1.02, disk(3))
+    spike_filtered=erosion(filtered_image, disk(8))*np.invert(spike_mask)
+    spike_filtered_image= (filtered_image*spike_mask)+spike_filtered
+    return(spike_filtered_image)
 
 if __name__=='__main__':
     project_path= os.path.expanduser('~/Dropbox/Janmejoy_SUIT_Dropbox/flat_field/LED/ground_PRNU_project/')
@@ -152,6 +164,7 @@ if __name__=='__main__':
     
     prnu_355_common= lighten([prnu_355_ff, prnu_355_aa])
     prnu_355_common= remove_center_line(prnu_355_common, 5)
+    prnu_355_common= remove_dust(prnu_355_common)
     sav_hdu= fits.PrimaryHDU(prnu_355_common, header= prep_header('prnu_355_common.fits', mfg, date))
     if save: sav_hdu.writeto(f'{sav}{date}_prnu_355_common.fits', overwrite=True)
     calib_stats(aa_355[0], prnu_355_common, 2200, 1500, 25, f'{date}_prnu_355_aa') #2200, 1500, 25,
@@ -166,6 +179,7 @@ if __name__=='__main__':
     
     prnu_255_common= lighten([prnu_255_ff, prnu_255_aa])
     prnu_255_common= remove_center_line(prnu_255_common, 5)
+    prnu_255_common= remove_dust(prnu_255_common)
     sav_hdu= fits.PrimaryHDU(prnu_255_common, header= prep_header('prnu_255_common.fits', mfg, date))
     if save: sav_hdu.writeto(f'{sav}{date}_prnu_255_common.fits', overwrite=True)
     calib_stats(ff_255[0], prnu_255_common, 2000, 3800, 25, f'{date}_prnu_255_ff')
