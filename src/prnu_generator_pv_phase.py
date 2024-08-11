@@ -23,7 +23,6 @@ taken for each row in the quadrant change regions.
 - 2024-08-11: Added Dict for data recording dates. Renamed data date variable in
 flat generator function.
 
-
 @author: janmejoy
 """
 
