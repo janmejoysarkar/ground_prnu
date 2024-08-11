@@ -20,6 +20,9 @@ zontally flipped, compared to onboard LED images. A fliplr has been added.
 - 2024-08-09: Module added to remove quadrant jump lines. Medians across 15 px
 taken for each row in the quadrant change regions.
 - 2024-08-10: Module added to remove dust spots on PRNU image.
+- 2024-08-11: Added Dict for data recording dates. Renamed data date variable in
+flat generator function.
+
 
 @author: janmejoy
 """
@@ -51,11 +54,11 @@ def prep_header(fname, mfg, data_date):
     header['DATADATE']=(data_date,'Date of raw data recording')
     return (header)
 
-def flat_generator(filelist, kernel, name, save=None):
+def flat_generator(filelist, kernel, name, data_date, save=None):
     stacked_led_img= add(filelist)
     led_flat_field= stacked_led_img/blur(stacked_led_img, kernel) #generates LED flat.
     led_flat_field= np.fliplr(led_flat_field)
-    hdu=fits.PrimaryHDU(led_flat_field, header=prep_header(name, mfg, date))
+    hdu=fits.PrimaryHDU(led_flat_field, header=prep_header(name, mfg, data_date))
     if save==True: hdu.writeto(f'{sav}{name}.fits', overwrite=True)
     #Based on previous study, kernel size of 11x11 px is used for boxcar blurring in 'blur' function.
     return(led_flat_field)
@@ -133,10 +136,10 @@ if __name__=='__main__':
     save= True
     sav= os.path.join(project_path, 'products/')
     mfg= str(datetime.date.today()) #manufacturing date
+    date_dict= {'255':'2023-06-01', '355':'2023-05-31'} #data dates
     
     kernel_355= 11 #default is 11 for PRNU
     kernel_255= 13 # default is 13 for PRNU
-    date= filelist[0][-37:-27] #date of data recording
     
     aa_255, ff_255=[], [] #aa and ff represent different sets of 4 LEDs.
     aa_355, ff_355=[], []
@@ -155,12 +158,14 @@ if __name__=='__main__':
         elif(ledstat=='aa00'):
             print (ledstat, fits.open(file)[0].header['FW1POS'], file)
             aa_355.append(file)
-
+        
+    ## Make PRNU for 255 ##
+    date= date_dict['355'] #data date
     print(f'{date}_prnu_355_ff')
-    prnu_355_ff = flat_generator(ff_355, kernel_355, f'{date}_prnu_355_ff', save)
+    prnu_355_ff = flat_generator(ff_355, kernel_355, f'{date}_prnu_355_ff', date, save)
     
     print(f'{date}_prnu_355_aa')
-    prnu_355_aa = flat_generator(aa_355, kernel_355, f'{date}_prnu_355_aa', save)
+    prnu_355_aa = flat_generator(aa_355, kernel_355, f'{date}_prnu_355_aa', date, save)
     
     prnu_355_common= lighten([prnu_355_ff, prnu_355_aa])
     prnu_355_common= remove_center_line(prnu_355_common, 5)
@@ -170,12 +175,13 @@ if __name__=='__main__':
     calib_stats(aa_355[0], prnu_355_common, 2200, 1500, 25, f'{date}_prnu_355_aa') #2200, 1500, 25,
     calib_stats(ff_355[0], prnu_355_common, 2200, 1500, 25, f'{date}_prnu_355_ff')
 
-    
+    ## Make PRNU for 255 ##
+    date=date_dict['255'] #data date
     print(f'{date}_prnu_255_ff')
-    prnu_255_ff = flat_generator(ff_255, kernel_255, f'{date}_prnu_255_ff', save)
+    prnu_255_ff = flat_generator(ff_255, kernel_255, f'{date}_prnu_255_ff', date, save)
     
     print(f'{date}_prnu_255_aa')
-    prnu_255_aa = flat_generator(aa_255, kernel_255, f'{date}_prnu_255_aa', save)
+    prnu_255_aa = flat_generator(aa_255, kernel_255, f'{date}_prnu_255_aa', date, save)
     
     prnu_255_common= lighten([prnu_255_ff, prnu_255_aa])
     prnu_255_common= remove_center_line(prnu_255_common, 5)
